@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'dart:ui';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,54 +18,29 @@ class LevelUpApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'Roboto',
         brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
         primaryColor: const Color(0xFF3B82F6),
       ),
-      home: const MainScreen(),
+      home: const MainNavigationScreen(),
     );
   }
 }
 
-class GlassCard extends StatelessWidget {
-  final Widget child;
-  const GlassCard({super.key, required this.child});
+class MainNavigationScreen extends StatefulWidget {
+  const MainNavigationScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withOpacity(0.15), width: 1.5),
-            ),
-            child: child,
-          ),
-        ),
-      ),
-    );
-  }
+  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+class _MainNavigationScreenState extends State<MainNavigationScreen> {
+  int _currentTab = 0;
+  int totalXP = 0;
+  bool isLoading = true;
 
-  @override
-  State<MainScreen> createState() => _MainScreenState();
-}
-
-class _MainScreenState extends State<MainScreen> {
-  int tab = 0;
-  int xp = 0;
-  bool loading = true;
   List<Map<String, dynamic>> habits = [];
   List<Map<String, dynamic>> todos = [];
-  List<String> doneToday = [];
+  List<String> completedHabitsToday = [];
 
   final List<Map<String, dynamic>> defaultHabits = [
     {'id': 'h1', 'title': 'Wake up at 6:00 AM', 'points': 50},
@@ -80,194 +54,470 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    load();
+    _loadAllData();
   }
 
-  Future<void> load() async {
-    final p = await SharedPreferences.getInstance();
+  Future<void> _loadAllData() async {
+    final prefs = await SharedPreferences.getInstance();
     String today = DateTime.now().toString().substring(0, 10);
-    if (p.getString('date') != today) {
-      doneToday = [];
-      p.setString('date', today);
-      p.setStringList('done', []);
-    } else {
-      doneToday = p.getStringList('done') ?? [];
-    }
+    String lastDate = prefs.getString('last_date') ?? '';
+
+    String? habitsJson = prefs.getString('saved_habits');
+    String? todosJson = prefs.getString('saved_todos');
+
     setState(() {
-      xp = p.getInt('xp') ?? 0;
-      habits = p.containsKey('h') ? List<Map<String, dynamic>>.from(jsonDecode(p.getString('h')!)) : List.from(defaultHabits);
-      todos = p.containsKey('t') ? List<Map<String, dynamic>>.from(jsonDecode(p.getString('t')!)) : [];
-      loading = false;
+      totalXP = prefs.getInt('total_xp') ?? 0;
+
+      if (habitsJson != null) {
+        habits = List<Map<String, dynamic>>.from(jsonDecode(habitsJson));
+      } else {
+        habits = List.from(defaultHabits);
+      }
+
+      if (todosJson != null) {
+        todos = List<Map<String, dynamic>>.from(jsonDecode(todosJson));
+      } else {
+        todos = [];
+      }
+
+      if (today != lastDate) {
+        completedHabitsToday = [];
+        prefs.setString('last_date', today);
+        prefs.setStringList('completed_habits_today', []);
+      } else {
+        completedHabitsToday = prefs.getStringList('completed_habits_today') ?? [];
+      }
+
+      isLoading = false;
     });
   }
 
-  Future<void> save() async {
-    final p = await SharedPreferences.getInstance();
-    p.setInt('xp', xp);
-    p.setString('h', jsonEncode(habits));
-    p.setString('t', jsonEncode(todos));
-    p.setStringList('done', doneToday);
+  Future<void> _saveAllData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('total_xp', totalXP);
+    await prefs.setString('saved_habits', jsonEncode(habits));
+    await prefs.setString('saved_todos', jsonEncode(todos));
+    await prefs.setStringList('completed_habits_today', completedHabitsToday);
   }
 
-  int get lvl => (xp ~/ 100) + 1;
+  int get currentLevel => (totalXP ~/ 100) + 1;
+  double get levelProgress => (totalXP % 100) / 100;
 
-  void addDlg() {
-    bool isH = tab == 0;
-    final tc = TextEditingController();
-    final pc = TextEditingController(text: "20");
+  void _toggleHabit(String id, int points) {
+    setState(() {
+      if (completedHabitsToday.contains(id)) {
+        completedHabitsToday.remove(id);
+        totalXP -= points;
+        if (totalXP < 0) totalXP = 0;
+      } else {
+        completedHabitsToday.add(id);
+        totalXP += points;
+      }
+    });
+    _saveAllData();
+  }
+
+  void _toggleTodo(int index) {
+    setState(() {
+      bool isDone = todos[index]['isDone'] ?? false;
+      int points = todos[index]['points'] ?? 20;
+
+      todos[index]['isDone'] = !isDone;
+      if (!isDone) {
+        totalXP += points;
+      } else {
+        totalXP -= points;
+        if (totalXP < 0) totalXP = 0;
+      }
+    });
+    _saveAllData();
+  }
+
+  void _showAddDialog(bool isHabit) {
+    final titleController = TextEditingController();
+    final pointsController = TextEditingController(text: "20");
+
     showDialog(
       context: context,
-      builder: (c) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: Text(isH ? "Add Habit" : "Add To-Do", style: const TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: tc, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(hintText: "Title")),
-            const SizedBox(height: 10),
-            TextField(controller: pc, keyboardType: TextInputType.number, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(labelText: "XP Reward")),
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(isHabit ? "Add New Habit" : "Add New To-Do", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: isHabit ? "e.g. Meditate" : "e.g. Finish Work",
+                  hintStyle: const TextStyle(color: Colors.grey),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: pointsController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: "XP Reward",
+                  labelStyle: const TextStyle(color: Colors.blueAccent),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
+              onPressed: () {
+                if (titleController.text.isNotEmpty) {
+                  int pts = int.tryParse(pointsController.text) ?? 20;
+                  setState(() {
+                    if (isHabit) {
+                      habits.add({'id': DateTime.now().millisecondsSinceEpoch.toString(), 'title': titleController.text.trim(), 'points': pts});
+                    } else {
+                      todos.add({'id': DateTime.now().millisecondsSinceEpoch.toString(), 'title': titleController.text.trim(), 'points': pts, 'isDone': false});
+                    }
+                  });
+                  _saveAllData();
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text("Add", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
           ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c), child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
-            onPressed: () {
-              if (tc.text.isNotEmpty) {
-                setState(() {
-                  var item = {'id': DateTime.now().toString(), 'title': tc.text, 'points': int.tryParse(pc.text) ?? 20};
-                  if (isH) habits.add(item); else { item['isDone'] = false; todos.add(item); }
-                });
-                save();
-                Navigator.pop(c);
-              }
-            },
-            child: const Text("Add"),
-          )
-        ],
-      ),
+        );
+      },
     );
   }
 
-  void editDlg(int i, bool isH) {
-    final tc = TextEditingController(text: isH ? habits[i]['title'] : todos[i]['title']);
-    final pc = TextEditingController(text: (isH ? habits[i]['points'] : todos[i]['points']).toString());
+  void _showOptionsDialog(int index, bool isHabit) {
+    final String currentTitle = isHabit ? habits[index]['title'] : todos[index]['title'];
+    final int currentPts = isHabit ? habits[index]['points'] : todos[index]['points'];
+
+    final titleController = TextEditingController(text: currentTitle);
+    final pointsController = TextEditingController(text: currentPts.toString());
+
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E293B),
-      builder: (c) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom, left: 20, right: 20, top: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(isH ? "Edit Habit" : "Edit To-Do", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-            const SizedBox(height: 15),
-            TextField(controller: tc, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(labelText: "Title")),
-            TextField(controller: pc, keyboardType: TextInputType.number, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(labelText: "XP")),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.red), onPressed: () { setState(() { if(isH) habits.removeAt(i); else todos.removeAt(i); }); save(); Navigator.pop(c); }, child: const Text("Delete"))),
-                const SizedBox(width: 10),
-                Expanded(child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.green), onPressed: () { setState(() { int pt = int.tryParse(pc.text)??20; if(isH){habits[i]['title']=tc.text;habits[i]['points']=pt;}else{todos[i]['title']=tc.text;todos[i]['points']=pt;} }); save(); Navigator.pop(c); }, child: const Text("Save"))),
-              ],
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 20, right: 20, top: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(isHabit ? "Edit / Delete Habit" : "Edit / Delete To-Do", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: titleController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: "Title",
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: pointsController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: "XP Reward",
+                  labelStyle: const TextStyle(color: Colors.blueAccent),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, padding: const EdgeInsets.symmetric(vertical: 12)),
+                      icon: const Icon(Icons.delete, color: Colors.white),
+                      label: const Text("Delete", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        setState(() {
+                          if (isHabit) {
+                            habits.removeAt(index);
+                          } else {
+                            todos.removeAt(index);
+                          }
+                        });
+                        _saveAllData();
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), padding: const EdgeInsets.symmetric(vertical: 12)),
+                      icon: const Icon(Icons.save, color: Colors.white),
+                      label: const Text("Save Changes", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        if (titleController.text.isNotEmpty) {
+                          setState(() {
+                            int pts = int.tryParse(pointsController.text) ?? currentPts;
+                            if (isHabit) {
+                              habits[index]['title'] = titleController.text.trim();
+                              habits[index]['points'] = pts;
+                            } else {
+                              todos[index]['title'] = titleController.text.trim();
+                              todos[index]['points'] = pts;
+                            }
+                          });
+                          _saveAllData();
+                          Navigator.pop(context);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    var list = tab == 0 ? habits : todos;
+    if (isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
     return Scaffold(
-      extendBody: true,
-      body: Container(
-        color: const Color(0xFF0F172A),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white12)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("LevelUp Quest", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white)),
-                        Text("Lvl $lvl", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF3B82F6))),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text("Total XP: $xp", style: const TextStyle(color: Colors.white75)),
-                    const SizedBox(height: 8),
-                    LinearProgressIndicator(value: (xp % 100) / 100, backgroundColor: Colors.black45, valueColor: const AlwaysStoppedAnimation(Color(0xFF10B981))),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: list.isEmpty ? Center(child: Text(tab == 0 ? "No Habits" : "No To-Do", style: const TextStyle(color: Colors.grey))) : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: list.length,
-                  itemBuilder: (context, i) {
-                    var item = list[i];
-                    bool done = tab == 0 ? doneToday.contains(item['id']) : (item['isDone'] ?? false);
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          int pts = item['points'] ?? 20;
-                          if (tab == 0) {
-                            if (doneToday.contains(item['id'])) { doneToday.remove(item['id']); xp = (xp - pts).clamp(0, 9999); }
-                            else { doneToday.add(item['id']); xp += pts; }
-                          } else {
-                            bool d = item['isDone'] ?? false;
-                            item['isDone'] = !d;
-                            if (!d) xp += pts; else xp = (xp - pts).clamp(0, 9999);
-                          }
-                        });
-                        save();
-                      },
-                      onLongPress: () => editDlg(i, tab == 0),
-                      child: GlassCard(
-                        child: Row(
-                          children: [
-                            Icon(done ? Icons.check_circle : Icons.radio_button_unchecked, color: done ? const Color(0xFF10B981) : Colors.white60),
-                            const SizedBox(width: 15),
-                            Expanded(child: Text(item['title'], style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, decoration: done ? TextDecoration.lineThrough : null, color: done ? Colors.white38 : Colors.white))),
-                            Text("+${item['points']} XP", style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(onPressed: addDlg, backgroundColor: const Color(0xFF10B981), shape: const CircleBorder(), child: const Icon(Icons.add, color: Colors.white)),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        color: const Color(0xFF1E293B),
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+      body: SafeArea(
+        child: Column(
           children: [
-            IconButton(icon: Icon(Icons.bolt, color: tab == 0 ? const Color(0xFF10B981) : Colors.grey), onPressed: () => setState(() => tab = 0)),
-            const SizedBox(width: 40),
-            IconButton(icon: Icon(Icons.check_circle_outline, color: tab == 1 ? const Color(0xFF3B82F6) : Colors.grey), onPressed: () => setState(() => tab = 1)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E293B),
+                borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("My Dashboard", style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold)),
+                          SizedBox(height: 2),
+                          Text("LevelUp Quest", style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3B82F6).withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFF3B82F6), width: 1.5),
+                        ),
+                        child: Text(
+                          "Level $currentLevel",
+                          style: const TextStyle(color: Color(0xFF60A5FA), fontWeight: FontWeight.w900, fontSize: 16),
+                        ),
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text("Total XP: $totalXP", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      Text("Next Level: ${(currentLevel * 100)} XP", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: LinearProgressIndicator(
+                      value: levelProgress,
+                      minHeight: 10,
+                      backgroundColor: const Color(0xFF0F172A),
+                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+                    ),
+                  )
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            Expanded(
+              child: _currentTab == 0 ? _buildHabitsList() : _buildTodoList(),
+            ),
           ],
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddDialog(_currentTab == 0),
+        backgroundColor: const Color(0xFF3B82F6),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: Text(_currentTab == 0 ? "Add Habit" : "Add To-Do", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentTab,
+        onTap: (index) => setState(() => _currentTab = index),
+        backgroundColor: const Color(0xFF1E293B),
+        selectedItemColor: const Color(0xFF10B981),
+        unselectedItemColor: Colors.grey,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.bolt_rounded), label: "Habits"),
+          BottomNavigationBarItem(icon: Icon(Icons.check_circle_outline_rounded), label: "To-Do"),
+        ],
+      ),
     );
   }
-}
+
+  Widget _buildHabitsList() {
+    if (habits.isEmpty) {
+      return const Center(child: Text("No Habits added. Tap 'Add Habit' to create one!", style: TextStyle(color: Colors.grey)));
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: habits.length,
+      itemBuilder: (context, index) {
+        final habit = habits[index];
+        final String id = habit['id'];
+        final bool isDone = completedHabitsToday.contains(id);
+
+        return GestureDetector(
+          onTap: () => _toggleHabit(id, habit['points']),
+          onLongPress: () => _showOptionsDialog(index, true),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDone ? const Color(0xFF1E293B).withOpacity(0.5) : const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: isDone ? const Color(0xFF10B981) : Colors.transparent, width: 2),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                  color: isDone ? const Color(0xFF10B981) : Colors.grey,
+                  size: 28,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        habit['title'],
+                        style: TextStyle(
+                          color: isDone ? Colors.grey : Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          decoration: isDone ? TextDecoration.lineThrough : null,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text("+${habit['points']} XP Reward", style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                    ],
+                  ),
+                ),
+                Text(
+                  isDone ? "DONE" : "CLAIM",
+                  style: TextStyle(
+                    color: isDone ? const Color(0xFF10B981) : const Color(0xFF60A5FA),
+                    fontWeight: FontWeight.w900,
+                  ),
+                )
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTodoList() {
+    if (todos.isEmpty) {
+      return const Center(child: Text("No To-Do items. Tap 'Add To-Do' to create one!", style: TextStyle(color: Colors.grey)));
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: todos.length,
+      itemBuilder: (context, index) {
+        final todo = todos[index];
+        final bool isDone = todo['isDone'] ?? false;
+
+        return GestureDetector(
+          onTap: () => _toggleTodo(index),
+          onLongPress: () => _showOptionsDialog(index, false),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDone ? const Color(0xFF1E293B).withOpacity(0.5) : const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: isDone ? const Color(0xFF10B981) : Colors.transparent, width: 2),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isDone ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+                  color: isDone ? const Color(0xFF10B981) : Colors.grey,
+                  size: 28,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        todo['title'],
+                        style: TextStyle(
+                          color: isDone ? Colors.grey : Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          decoration: isDone ? TextDecoration.lineThrough : null,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text("+${todo['points']} XP Reward", style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                    ],
+                  ),
+                ),
+                Text(
+                  isDone ? "COMPLETED" : "DO IT",
+                  style: TextStyle(
+                    color: isDone ? const Color(0xFF10B981) : const Color(0xFF60A5FA),
+                    fontWeight: FontWeight.w900,
+                  ),
+                )
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}                        

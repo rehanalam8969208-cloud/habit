@@ -18,8 +18,8 @@ class LevelUpApp extends StatelessWidget {
       title: 'Level Up Pro',
       theme: ThemeData(
         fontFamily: 'Roboto',
-        brightness: Brightness.dark,
-        primaryColor: const Color(0xFF3B82F6),
+        brightness: Brightness.light,
+        primaryColor: const Color(0xFF0284C7),
       ),
       home: const MainNavigationScreen(),
     );
@@ -44,9 +44,16 @@ class GlassCard extends StatelessWidget {
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withOpacity(0.65),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withOpacity(0.15), width: 1.5),
+              border: Border.all(color: Colors.white.withOpacity(0.8), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 15,
+                  spreadRadius: 1,
+                )
+              ],
             ),
             child: child,
           ),
@@ -160,20 +167,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF1E293B).withOpacity(0.9),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: Colors.white.withOpacity(0.2))),
-          title: Text(isHabit ? "Add New Habit" : "Add New To-Do", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+          backgroundColor: const Color(0xFFF1F5F9),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Colors.white, width: 2)),
+          title: Text(isHabit ? "Add New Habit" : "Add New To-Do", style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: titleController,
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(color: Color(0xFF1E293B)),
                 decoration: InputDecoration(
                   hintText: isHabit ? "e.g. Meditate" : "e.g. Finish Work",
                   hintStyle: const TextStyle(color: Colors.grey),
                   filled: true,
-                  fillColor: Colors.black.withOpacity(0.3),
+                  fillColor: Colors.white,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 ),
               ),
@@ -181,12 +188,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               TextField(
                 controller: pointsController,
                 keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(color: Color(0xFF1E293B)),
                 decoration: InputDecoration(
                   labelText: "XP Reward",
-                  labelStyle: const TextStyle(color: Colors.blueAccent),
+                  labelStyle: const TextStyle(color: Color(0xFF0284C7)),
                   filled: true,
-                  fillColor: Colors.black.withOpacity(0.3),
+                  fillColor: Colors.white,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 ),
               ),
@@ -195,7 +202,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D9488)),
               onPressed: () {
                 if (titleController.text.isNotEmpty) {
                   int pts = int.tryParse(pointsController.text) ?? 20;
@@ -232,15 +239,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(isHabit ? "Edit / Delete Habit" : "Edit / Delete To-Do", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+              Text(isHabit ? "Edit / Delete Habit" : "Edit / Delete To-Do", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1E293B))),
               const SizedBox(height: 20),
               TextField(
                 controller: titleController,
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(color: Color(0xFF1E293B)),
                 decoration: InputDecoration(
                   labelText: "Title",
                   filled: true,
-                  fillColor: Colors.black.withOpacity(0.3),
+                  fillColor: Colors.white,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 ),
               ),
@@ -248,11 +255,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               TextField(
                 controller: pointsController,
                 keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(color: Color(0xFF1E293B)),
                 decoration: InputDecoration(
                   labelText: "XP Reward",
                   filled: true,
-                  fillColor: Colors.black.withOpacity(0.3),
+                  fillColor: Colors.white,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 ),
               ),
@@ -261,7 +268,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent.withOpacity(0.8), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                       icon: const Icon(Icons.delete, color: Colors.white),
                       label: const Text("Delete", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       onPressed: () {
@@ -277,7 +284,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981).withOpacity(0.8), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D9488), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                       icon: const Icon(Icons.save, color: Colors.white),
                       label: const Text("Save", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       onPressed: () {
@@ -310,13 +317,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) return const Scaffold(backgroundColor: Color(0xFF0F172A), body: Center(child: CircularProgressIndicator()));
+    if (isLoading) return const Scaffold(backgroundColor: Color(0xFFE2E8F0), body: Center(child: CircularProgressIndicator()));
 
     return Scaffold(
       extendBody: true,
       body: Stack(
         children: [
-          Container(color: const Color(0xFF0F172A)),
+          // Light Foggy Blue Background Theme Gradient (Like the Lighthouse image)
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF93C5FD), // Foggy sky blue
+                  Color(0xFF60A5FA), // Mid blue
+                  Color(0xFF3B82F6), // Deep ocean tone
+                ],
+              ),
+            ),
+          ),
           SafeArea(
             child: Column(
               children: [
@@ -332,21 +352,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           const Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("My Dashboard", style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold)),
+                              Text("MY DASHBOARD", style: TextStyle(color: Color(0xFF475569), fontSize: 13, fontWeight: FontWeight.bold)),
                               SizedBox(height: 2),
-                              Text("LevelUp Quest", style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
+                              Text("LevelUp Quest", style: TextStyle(color: Color(0xFF0F172A), fontSize: 26, fontWeight: FontWeight.w900)),
                             ],
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF3B82F6).withOpacity(0.3),
+                              color: const Color(0xFF0284C7).withOpacity(0.2),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: const Color(0xFF3B82F6), width: 1.5),
+                              border: Border.all(color: const Color(0xFF0284C7), width: 1.5),
                             ),
                             child: Text(
                               "Level $currentLevel",
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                              style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w900, fontSize: 16),
                             ),
                           )
                         ],
@@ -355,8 +375,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text("Total XP: $totalXP", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                          Text("Next: ${(currentLevel * 100)} XP", style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                          Text("Total XP: $totalXP", style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text("Next: ${(currentLevel * 100)} XP", style: const TextStyle(color: Color(0xFF475569), fontSize: 13)),
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -365,8 +385,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         child: LinearProgressIndicator(
                           value: levelProgress,
                           minHeight: 12,
-                          backgroundColor: Colors.black.withOpacity(0.4),
-                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+                          backgroundColor: Colors.white.withOpacity(0.5),
+                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0D9488)),
                         ),
                       )
                     ],
@@ -382,7 +402,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddDialog,
-        backgroundColor: const Color(0xFF10B981),
+        backgroundColor: const Color(0xFF0D9488),
         elevation: 8,
         shape: const CircleBorder(),
         child: const Icon(Icons.add, color: Colors.white, size: 32),
@@ -392,7 +412,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
           child: BottomAppBar(
-            color: Colors.white.withOpacity(0.08),
+            color: Colors.white.withOpacity(0.25),
             elevation: 0,
             shape: const CircularNotchedRectangle(),
             notchMargin: 10,
@@ -407,8 +427,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.bolt_rounded, color: _currentTab == 0 ? const Color(0xFF10B981) : Colors.grey, size: 28),
-                        Text("Habits", style: TextStyle(color: _currentTab == 0 ? const Color(0xFF10B981) : Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                        Icon(Icons.bolt_rounded, color: _currentTab == 0 ? const Color(0xFF0D9488) : const Color(0xFF475569), size: 28),
+                        Text("Habits", style: TextStyle(color: _currentTab == 0 ? const Color(0xFF0D9488) : const Color(0xFF475569), fontSize: 12, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -419,8 +439,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.check_circle_outline_rounded, color: _currentTab == 1 ? const Color(0xFF3B82F6) : Colors.grey, size: 26),
-                        Text("To-Do", style: TextStyle(color: _currentTab == 1 ? const Color(0xFF3B82F6) : Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                        Icon(Icons.check_circle_outline_rounded, color: _currentTab == 1 ? const Color(0xFF0284C7) : const Color(0xFF475569), size: 26),
+                        Text("To-Do", style: TextStyle(color: _currentTab == 1 ? const Color(0xFF0284C7) : const Color(0xFF475569), fontSize: 12, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -434,7 +454,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   Widget _buildHabitsList() {
-    if (habits.isEmpty) return const Center(child: Text("No Habits added.", style: TextStyle(color: Colors.grey)));
+    if (habits.isEmpty) return const Center(child: Text("No Habits added.", style: TextStyle(color: Color(0xFF334155), fontWeight: FontWeight.bold)));
     return ListView.builder(
       padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100),
       itemCount: habits.length,
@@ -450,52 +470,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             padding: const EdgeInsets.all(18),
             child: Row(
               children: [
-                Icon(isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, color: isDone ? const Color(0xFF10B981) : Colors.white70, size: 30),
+                Icon(isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, color: isDone ? const Color(0xFF0D9488) : const Color(0xFF64748B), size: 30),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(habit['title'], style: TextStyle(color: isDone ? Colors.white54 : Colors.white, fontSize: 16, fontWeight: FontWeight.bold, decoration: isDone ? TextDecoration.lineThrough : null)),
+                      Text(habit['title'], style: TextStyle(color: isDone ? const Color(0xFF94A3B8) : const Color(0xFF0F172A), fontSize: 16, fontWeight: FontWeight.bold, decoration: isDone ? TextDecoration.lineThrough : null)),
                       const SizedBox(height: 4),
-                      Text("+${habit['points']} XP Reward", style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildTodoList() {
-    if (todos.isEmpty) return const Center(child: Text("No To-Do items.", style: TextStyle(color: Colors.grey)));
-    return ListView.builder(
-      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100),
-      itemCount: todos.length,
-      itemBuilder: (context, index) {
-        final todo = todos[index];
-        final bool isDone = todo['isDone'] ?? false;
-
-        return GestureDetector(
-          onTap: () => _toggleTodo(index),
-          onLongPress: () => _showOptionsDialog(index, false),
-          child: GlassCard(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              children: [
-                Icon(isDone ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded, color: isDone ? const Color(0xFF3B82F6) : Colors.white70, size: 30),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(todo['title'], style: TextStyle(color: isDone ? Colors.white54 : Colors.white, fontSize: 16, fontWeight: FontWeight.bold, decoration: isDone ? TextDecoration.lineThrough : null)),
-                      const SizedBox(height: 4),
-                      Text("+${todo['points']} XP Reward", style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                      Text("+${todo['points']} XP Reward", style: const TextStyle(color: Color(0xFF475569), fontSize: 13)),
                     ],
                   ),
                 ),

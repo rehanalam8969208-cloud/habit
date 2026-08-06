@@ -19,11 +19,6 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Android Scaffold
-        run: |
-          rm -rf android
-          flutter create . --platforms=android --org=com.rehan.habit
-
       - name: Get Dependencies
         run: flutter pub get
 
@@ -33,5 +28,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: LevelUp-Pro-App
-          path: 'build/app/outputs/**/*.apk'
+          name: LevelUp-Glass-App
+          path: build/app/outputs/flutter-apk/app-debug.apk

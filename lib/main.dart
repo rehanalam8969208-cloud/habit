@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:ui';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,10 +19,39 @@ class LevelUpApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'Roboto',
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
         primaryColor: const Color(0xFF3B82F6),
       ),
       home: const MainNavigationScreen(),
+    );
+  }
+}
+
+class GlassCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry margin;
+  final EdgeInsetsGeometry padding;
+
+  const GlassCard({super.key, required this.child, required this.margin, required this.padding});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: margin,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withOpacity(0.15), width: 1.5),
+            ),
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -68,17 +98,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     setState(() {
       totalXP = prefs.getInt('total_xp') ?? 0;
 
-      if (habitsJson != null) {
-        habits = List<Map<String, dynamic>>.from(jsonDecode(habitsJson));
-      } else {
-        habits = List.from(defaultHabits);
-      }
+      if (habitsJson != null) habits = List<Map<String, dynamic>>.from(jsonDecode(habitsJson));
+      else habits = List.from(defaultHabits);
 
-      if (todosJson != null) {
-        todos = List<Map<String, dynamic>>.from(jsonDecode(todosJson));
-      } else {
-        todos = [];
-      }
+      if (todosJson != null) todos = List<Map<String, dynamic>>.from(jsonDecode(todosJson));
+      else todos = [];
 
       if (today != lastDate) {
         completedHabitsToday = [];
@@ -87,7 +111,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       } else {
         completedHabitsToday = prefs.getStringList('completed_habits_today') ?? [];
       }
-
       isLoading = false;
     });
   }
@@ -107,8 +130,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     setState(() {
       if (completedHabitsToday.contains(id)) {
         completedHabitsToday.remove(id);
-        totalXP -= points;
-        if (totalXP < 0) totalXP = 0;
+        totalXP = (totalXP - points).clamp(0, 999999);
       } else {
         completedHabitsToday.add(id);
         totalXP += points;
@@ -123,17 +145,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       int points = todos[index]['points'] ?? 20;
 
       todos[index]['isDone'] = !isDone;
-      if (!isDone) {
-        totalXP += points;
-      } else {
-        totalXP -= points;
-        if (totalXP < 0) totalXP = 0;
-      }
+      if (!isDone) totalXP += points;
+      else totalXP = (totalXP - points).clamp(0, 999999);
     });
     _saveAllData();
   }
 
-  void _showAddDialog(bool isHabit) {
+  void _showAddDialog() {
+    bool isHabit = _currentTab == 0;
     final titleController = TextEditingController();
     final pointsController = TextEditingController(text: "20");
 
@@ -141,8 +160,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: const Color(0xFF1E293B).withOpacity(0.9),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: Colors.white.withOpacity(0.2))),
           title: Text(isHabit ? "Add New Habit" : "Add New To-Do", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -154,7 +173,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   hintText: isHabit ? "e.g. Meditate" : "e.g. Finish Work",
                   hintStyle: const TextStyle(color: Colors.grey),
                   filled: true,
-                  fillColor: const Color(0xFF0F172A),
+                  fillColor: Colors.black.withOpacity(0.3),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 ),
               ),
@@ -167,28 +186,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   labelText: "XP Reward",
                   labelStyle: const TextStyle(color: Colors.blueAccent),
                   filled: true,
-                  fillColor: const Color(0xFF0F172A),
+                  fillColor: Colors.black.withOpacity(0.3),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 ),
               ),
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
               onPressed: () {
                 if (titleController.text.isNotEmpty) {
                   int pts = int.tryParse(pointsController.text) ?? 20;
                   setState(() {
-                    if (isHabit) {
-                      habits.add({'id': DateTime.now().millisecondsSinceEpoch.toString(), 'title': titleController.text.trim(), 'points': pts});
-                    } else {
-                      todos.add({'id': DateTime.now().millisecondsSinceEpoch.toString(), 'title': titleController.text.trim(), 'points': pts, 'isDone': false});
-                    }
+                    if (isHabit) habits.add({'id': DateTime.now().millisecondsSinceEpoch.toString(), 'title': titleController.text.trim(), 'points': pts});
+                    else todos.add({'id': DateTime.now().millisecondsSinceEpoch.toString(), 'title': titleController.text.trim(), 'points': pts, 'isDone': false});
                   });
                   _saveAllData();
                   Navigator.pop(context);
@@ -205,61 +218,56 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void _showOptionsDialog(int index, bool isHabit) {
     final String currentTitle = isHabit ? habits[index]['title'] : todos[index]['title'];
     final int currentPts = isHabit ? habits[index]['points'] : todos[index]['points'];
-
     final titleController = TextEditingController(text: currentTitle);
     final pointsController = TextEditingController(text: currentPts.toString());
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E293B),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 20, right: 20, top: 20),
+        return GlassCard(
+          margin: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 16, right: 16, top: 16),
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(isHabit ? "Edit / Delete Habit" : "Edit / Delete To-Do", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               TextField(
                 controller: titleController,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   labelText: "Title",
-                  labelStyle: const TextStyle(color: Colors.grey),
                   filled: true,
-                  fillColor: const Color(0xFF0F172A),
+                  fillColor: Colors.black.withOpacity(0.3),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               TextField(
                 controller: pointsController,
                 keyboardType: TextInputType.number,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   labelText: "XP Reward",
-                  labelStyle: const TextStyle(color: Colors.blueAccent),
                   filled: true,
-                  fillColor: const Color(0xFF0F172A),
+                  fillColor: Colors.black.withOpacity(0.3),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, padding: const EdgeInsets.symmetric(vertical: 12)),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent.withOpacity(0.8), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                       icon: const Icon(Icons.delete, color: Colors.white),
                       label: const Text("Delete", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       onPressed: () {
                         setState(() {
-                          if (isHabit) {
-                            habits.removeAt(index);
-                          } else {
-                            todos.removeAt(index);
-                          }
+                          if (isHabit) habits.removeAt(index);
+                          else todos.removeAt(index);
                         });
                         _saveAllData();
                         Navigator.pop(context);
@@ -269,9 +277,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), padding: const EdgeInsets.symmetric(vertical: 12)),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981).withOpacity(0.8), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                       icon: const Icon(Icons.save, color: Colors.white),
-                      label: const Text("Save Changes", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      label: const Text("Save", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       onPressed: () {
                         if (titleController.text.isNotEmpty) {
                           setState(() {
@@ -292,7 +300,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
             ],
           ),
         );
@@ -302,153 +310,158 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (isLoading) return const Scaffold(backgroundColor: Color(0xFF0F172A), body: Center(child: CircularProgressIndicator()));
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E293B),
-                borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      extendBody: true,
+      body: Stack(
+        children: [
+          Container(color: const Color(0xFF0F172A)),
+          SafeArea(
+            child: Column(
+              children: [
+                GlassCard(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text("My Dashboard", style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold)),
-                          SizedBox(height: 2),
-                          Text("LevelUp Quest", style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("My Dashboard", style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold)),
+                              SizedBox(height: 2),
+                              Text("LevelUp Quest", style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF3B82F6).withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFF3B82F6), width: 1.5),
+                            ),
+                            child: Text(
+                              "Level $currentLevel",
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                            ),
+                          )
                         ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF3B82F6).withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFF3B82F6), width: 1.5),
-                        ),
-                        child: Text(
-                          "Level $currentLevel",
-                          style: const TextStyle(color: Color(0xFF60A5FA), fontWeight: FontWeight.w900, fontSize: 16),
+                      const SizedBox(height: 25),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text("Total XP: $totalXP", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text("Next: ${(currentLevel * 100)} XP", style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: levelProgress,
+                          minHeight: 12,
+                          backgroundColor: Colors.black.withOpacity(0.4),
+                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
                         ),
                       )
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("Total XP: $totalXP", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      Text("Next Level: ${(currentLevel * 100)} XP", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: LinearProgressIndicator(
-                      value: levelProgress,
-                      minHeight: 10,
-                      backgroundColor: const Color(0xFF0F172A),
-                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+                ),
+                Expanded(
+                  child: _currentTab == 0 ? _buildHabitsList() : _buildTodoList(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddDialog,
+        backgroundColor: const Color(0xFF10B981),
+        elevation: 8,
+        shape: const CircleBorder(),
+        child: const Icon(Icons.add, color: Colors.white, size: 32),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: BottomAppBar(
+            color: Colors.white.withOpacity(0.08),
+            elevation: 0,
+            shape: const CircularNotchedRectangle(),
+            notchMargin: 10,
+            child: SizedBox(
+              height: 60,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  MaterialButton(
+                    minWidth: 80,
+                    onPressed: () => setState(() => _currentTab = 0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.bolt_rounded, color: _currentTab == 0 ? const Color(0xFF10B981) : Colors.grey, size: 28),
+                        Text("Habits", style: TextStyle(color: _currentTab == 0 ? const Color(0xFF10B981) : Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                      ],
                     ),
-                  )
+                  ),
+                  const SizedBox(width: 40),
+                  MaterialButton(
+                    minWidth: 80,
+                    onPressed: () => setState(() => _currentTab = 1),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle_outline_rounded, color: _currentTab == 1 ? const Color(0xFF3B82F6) : Colors.grey, size: 26),
+                        Text("To-Do", style: TextStyle(color: _currentTab == 1 ? const Color(0xFF3B82F6) : Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-
-            Expanded(
-              child: _currentTab == 0 ? _buildHabitsList() : _buildTodoList(),
-            ),
-          ],
+          ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddDialog(_currentTab == 0),
-        backgroundColor: const Color(0xFF3B82F6),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: Text(_currentTab == 0 ? "Add Habit" : "Add To-Do", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentTab,
-        onTap: (index) => setState(() => _currentTab = index),
-        backgroundColor: const Color(0xFF1E293B),
-        selectedItemColor: const Color(0xFF10B981),
-        unselectedItemColor: Colors.grey,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.bolt_rounded), label: "Habits"),
-          BottomNavigationBarItem(icon: Icon(Icons.check_circle_outline_rounded), label: "To-Do"),
-        ],
       ),
     );
   }
 
   Widget _buildHabitsList() {
-    if (habits.isEmpty) {
-      return const Center(child: Text("No Habits added. Tap 'Add Habit' to create one!", style: TextStyle(color: Colors.grey)));
-    }
+    if (habits.isEmpty) return const Center(child: Text("No Habits added.", style: TextStyle(color: Colors.grey)));
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100),
       itemCount: habits.length,
       itemBuilder: (context, index) {
         final habit = habits[index];
-        final String id = habit['id'];
-        final bool isDone = completedHabitsToday.contains(id);
+        final bool isDone = completedHabitsToday.contains(habit['id']);
 
         return GestureDetector(
-          onTap: () => _toggleHabit(id, habit['points']),
+          onTap: () => _toggleHabit(habit['id'], habit['points']),
           onLongPress: () => _showOptionsDialog(index, true),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
+          child: GlassCard(
             margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDone ? const Color(0xFF1E293B).withOpacity(0.5) : const Color(0xFF1E293B),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: isDone ? const Color(0xFF10B981) : Colors.transparent, width: 2),
-            ),
+            padding: const EdgeInsets.all(18),
             child: Row(
               children: [
-                Icon(
-                  isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                  color: isDone ? const Color(0xFF10B981) : Colors.grey,
-                  size: 28,
-                ),
+                Icon(isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, color: isDone ? const Color(0xFF10B981) : Colors.white70, size: 30),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        habit['title'],
-                        style: TextStyle(
-                          color: isDone ? Colors.grey : Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          decoration: isDone ? TextDecoration.lineThrough : null,
-                        ),
-                      ),
+                      Text(habit['title'], style: TextStyle(color: isDone ? Colors.white54 : Colors.white, fontSize: 16, fontWeight: FontWeight.bold, decoration: isDone ? TextDecoration.lineThrough : null)),
                       const SizedBox(height: 4),
                       Text("+${habit['points']} XP Reward", style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
                     ],
                   ),
                 ),
-                Text(
-                  isDone ? "DONE" : "CLAIM",
-                  style: TextStyle(
-                    color: isDone ? const Color(0xFF10B981) : const Color(0xFF60A5FA),
-                    fontWeight: FontWeight.w900,
-                  ),
-                )
               ],
             ),
           ),
@@ -458,11 +471,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   Widget _buildTodoList() {
-    if (todos.isEmpty) {
-      return const Center(child: Text("No To-Do items. Tap 'Add To-Do' to create one!", style: TextStyle(color: Colors.grey)));
-    }
+    if (todos.isEmpty) return const Center(child: Text("No To-Do items.", style: TextStyle(color: Colors.grey)));
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100),
       itemCount: todos.length,
       itemBuilder: (context, index) {
         final todo = todos[index];
@@ -470,49 +481,24 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
         return GestureDetector(
           onTap: () => _toggleTodo(index),
-          onLongPress: () => _showOptionsDialog(index, false),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
+          onLongPress: () => _
+          child: GlassCard(
             margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDone ? const Color(0xFF1E293B).withOpacity(0.5) : const Color(0xFF1E293B),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: isDone ? const Color(0xFF10B981) : Colors.transparent, width: 2),
-            ),
+            padding: const EdgeInsets.all(18),
             child: Row(
               children: [
-                Icon(
-                  isDone ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
-                  color: isDone ? const Color(0xFF10B981) : Colors.grey,
-                  size: 28,
-                ),
+                Icon(isDone ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded, color: isDone ? const Color(0xFF3B82F6) : Colors.white70, size: 30),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        todo['title'],
-                        style: TextStyle(
-                          color: isDone ? Colors.grey : Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          decoration: isDone ? TextDecoration.lineThrough : null,
-                        ),
-                      ),
+                      Text(todo['title'], style: TextStyle(color: isDone ? Colors.white54 : Colors.white, fontSize: 16, fontWeight: FontWeight.bold, decoration: isDone ? TextDecoration.lineThrough : null)),
                       const SizedBox(height: 4),
                       Text("+${todo['points']} XP Reward", style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
                     ],
                   ),
                 ),
-                Text(
-                  isDone ? "COMPLETED" : "DO IT",
-                  style: TextStyle(
-                    color: isDone ? const Color(0xFF10B981) : const Color(0xFF60A5FA),
-                    fontWeight: FontWeight.w900,
-                  ),
-                )
               ],
             ),
           ),
@@ -520,4 +506,4 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       },
     );
   }
-}                        
+}          

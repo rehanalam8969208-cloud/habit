@@ -19,6 +19,11 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Generate Android Scaffold
+        run: |
+          rm -rf android
+          flutter create . --platforms=android --org=com.rehan.habit
+
       - name: Get Dependencies
         run: flutter pub get
 
